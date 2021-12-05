@@ -5,6 +5,8 @@ import numpy as np # used for linear algebra math
 import math # used for trigonometry functions
 import time # used to track time, duh
 
+from circles_on_steroids import find_circle_center_auto
+
 
 
 
@@ -46,7 +48,7 @@ def find_circle_center_manual(image):
 	# Find the center
 	center = np.around(np.mean(circles[0,:], axis = 0)) # Находим среднее арифметическое из найденный кругов
 	# center array contains x, y, radius
-	return (center[0], center[1])
+	return (int(center[0]), int(center[1]), int(center[2]))
 
 
 def find_contour_center(image):
@@ -125,12 +127,15 @@ def visual_odometry():
 
 	# TODO: Find actual rotation center on the base_image
 	coords = find_circle_center_manual(base_image)
-	print(coords)
 	coords2 = find_contour_center(base_image)
+	coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
+	print(coords)
 	print(coords2)
-	# Draw the center of the wheel
+	print(coords3)
+	# Draw the center of the wheel          
 	cv2.circle(base_image, (coords[0], coords[1]), 20, (100), -1)
 	cv2.circle(base_image, (coords2[0], coords2[1]), 15, (150), -1)
+	cv2.circle(base_image, (coords3[0], coords3[1]), 10, (200), -1)
 	# Save image to file
 	cv2.imwrite("rotation_center.png", base_image)
 	# Show the image with marked rotation center

@@ -39,7 +39,7 @@ def circl_centr(image):
 	# эта функция ищет центр колеса
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	image = cv2.medianBlur(image,5)
-	circles = cv2.HoughCircles( gray_mask(image),cv2.HOUGH_GRADIENT,1,20, param1=50,param2=40, minRadius=50,maxRadius=220) # Апрокимируем выделенное серое колесо до круга. Но функция находит много лишних кругов.
+	circles = cv2.HoughCircles( gray_mask(image),cv2.cv.CV_HOUGH_GRADIENT,1,20, param1=50,param2=40, minRadius=50,maxRadius=220) # Апрокимируем выделенное серое колесо до круга. Но функция находит много лишних кругов.
 	circl = np.around(np.mean(circles[0,:], axis = 0)) # Находим среднее арифметическое из найденный кругов
 	circl = np.uint16(np.around(circl))
 	return np.array([circl[0], circl[1]])

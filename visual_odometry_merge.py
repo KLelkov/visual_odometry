@@ -9,17 +9,6 @@ from circles_on_steroids import find_circle_center_auto
 
 
 
-
-
-def color_detection_bgr(image):
-	# Ranges for Blue, Green and Red values
-	lower_red = np.array([90,95,80])
-	upper_red = np.array([140,150,255])
-	# Apply color range to the image
-	red_mask = cv2.inRange(image, lower_red, upper_red)
-	return red_mask
-
-
 def color_detection_hsv(image):
 	# Ranges for Blue, Green and Red values
 	# Red range
@@ -31,6 +20,7 @@ def color_detection_hsv(image):
 	# Apply color range to the image
 	red_mask = cv2.inRange(image, lower_red, upper_red) + cv2.inRange(image, lower_red1, upper_red1)
 	return red_mask
+
 
 
 def find_circle_center_manual(image):
@@ -82,42 +72,32 @@ def visual_odometry():
 	width = 1920
 	height = 1080
 	# Open video file
-	cap = cv2.VideoCapture('test_4.488_rps.mp4')
+	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
+	cap = cv2.VideoCapture('crop_1.496rps.mp4')
 
+	fps = cap.get(cv2.cv.CV_CAP_PROP_FPS)
+	print("Video FPS: {}".format(fps))
 
 	# Read one frame for demonstration
 	ret, frame = cap.read()
 	# If frame retrieved successefuly
 	if ret:
-		# Normalize image brightness
-		cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
-		# Blur the image to reduce noise
-		blur = cv2.medianBlur(frame, 15)
-		# Get color mask
-		mask = color_detection_bgr(blur)
-		# Merge the mask and the original image to highlight the color
-		masked = cv2.bitwise_and(frame, frame, mask=mask)
-		# Save image to file
-		cv2.imwrite('detection_highlight.png', masked)
-
 		# Correct image width and height for futher reference
 		height, width, channels = frame.shape
 
 
-
 	base_image = np.zeros((height,width), np.uint8)
-	# Analyze first 50 frames to find the rotation center
+	# Run the whole video once to find the rotation center
 	count = 0
 	end_not_reached = True
+	print("Running the video for the first time to find rotation center...")
 	while end_not_reached:
-	#for i in range(0, 450):
-	#while(cap.isOpened()):
+	#for i in range(0, 100):
 		# Attempt to get the frame from the video
 		ret, frame = cap.read()
 		end_not_reached = ret
 		count += 1
-		if count % 25 == 0:
-			print(count)
+		
 		if ret:
 			# Normalize image brightness
 			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
@@ -131,8 +111,11 @@ def visual_odometry():
 
 			# add mask to the base_image
 			base_image = base_image + mask
-	print("total frames: {}".format(count))
-	# TODO: Find actual rotation center on the base_image
+		if count % 50 == 0:
+			print("Frames analysed: {} ...".format(count))
+	print("Total frames in the video: {}".format(count))
+
+	# Find actual rotation center on the base_image
 	coords = find_circle_center_manual(base_image)
 	#coords2 = find_contour_center(base_image)
 	#coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
@@ -154,12 +137,60 @@ def visual_odometry():
 
 	# TODO: Analyse the video frame by frame and calculate displacement
 	# of the marker relative to the rotatin center
+	cap.release()
 
-	# TODO: Calculate the rotation speed of the wheel
+	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
+	cap = cv2.VideoCapture('crop_1.496rps.mp4')
+	count = 0
+	end_not_reached = True
+	angle = []
+	velocity = []
+	#while end_not_reached:
+	for i in range(0, 200):
+		# Attempt to get the frame from the video
+		ret, frame = cap.read()
+		end_not_reached = ret
+		count += 1
+		if count % 25 == 0:
+			print(count)
+		if ret:
+			# Normalize image brightness
+			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
+			# Blur the image to reduce noise
+			blur = cv2.medianBlur(frame, 15)
+			# Convert BGR to HSV
+			# HSV images are easier to work with
+			hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+			# Get the mask
+			mask = color_detection_hsv(hsv)
+			moments = cv2.moments(mask, 1)
+			x = 0
+			y = 0
+			if moments['m00'] != 0:
+				x = int(moments['m10']/moments['m00'])
+				y = int(moments['m01']/moments['m00'])
+				#cv2.circle(mask, (x, y), 8, (150), -1)
+				#cv2.imshow("center", cv2.resize(mask, (width, height), interpolation = cv2.INTER_AREA))
+				#key_press = cv2.waitKey()
+
+				# TODO: Calculate the rotation speed of the wheel
+				angle.append(math.atan2(y - coords[1], x - coords[0]))
+				#print(angle)
+				if len(angle) > 1:
+					ang_dif = angle[-1] - angle[-2]
+					if abs(ang_dif) > math.pi:
+						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+					# Limit possible angle increment to one radian, this will prevent
+					# huge leaps due to false marker detection
+					# TODO: find a better way to reliably detect marker
+					if abs(ang_dif) < 1:# and abs(ang_dif) > 0.01:
+						rotation_speed = abs(ang_dif) * fps
+						print("velocity: {}".format(rotation_speed))
+						velocity.append(rotation_speed)
 
 
 
-
+	print("Mean value: {}".format(sum(velocity) / len(velocity)))
 	# Close the video
 	cap.release()
 

@@ -6,6 +6,8 @@ import math # used for trigonometry functions
 import time # used to track time, duh
 
 from circles_on_steroids import find_circle_center_auto
+from tqdm import tqdm
+
 
 
 
@@ -141,18 +143,19 @@ def visual_odometry():
 
 	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
 	cap = cv2.VideoCapture('crop_1.496rps.mp4')
-	count = 0
+	#count = 0
 	end_not_reached = True
 	angle = []
 	velocity = []
 	#while end_not_reached:
-	for i in range(0, 200):
+	#for i in range(0, 200):
+	for i in tqdm(list(range(0, count))):
 		# Attempt to get the frame from the video
 		ret, frame = cap.read()
 		end_not_reached = ret
-		count += 1
-		if count % 25 == 0:
-			print(count)
+		#count += 1
+		#if count % 25 == 0:
+		#	print(count)
 		if ret:
 			# Normalize image brightness
 			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
@@ -185,7 +188,7 @@ def visual_odometry():
 					# TODO: find a better way to reliably detect marker
 					if abs(ang_dif) < 1:# and abs(ang_dif) > 0.01:
 						rotation_speed = abs(ang_dif) * fps
-						print("velocity: {}".format(rotation_speed))
+						#print("velocity: {}".format(rotation_speed))
 						velocity.append(rotation_speed)
 
 

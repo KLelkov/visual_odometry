@@ -107,10 +107,17 @@ def visual_odometry():
 
 	base_image = np.zeros((height,width), np.uint8)
 	# Analyze first 50 frames to find the rotation center
-	for i in range(0, 450):
+	count = 0
+	end_not_reached = True
+	while end_not_reached:
+	#for i in range(0, 450):
 	#while(cap.isOpened()):
 		# Attempt to get the frame from the video
 		ret, frame = cap.read()
+		end_not_reached = ret
+		count += 1
+		if count % 25 == 0:
+			print(count)
 		if ret:
 			# Normalize image brightness
 			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
@@ -124,18 +131,18 @@ def visual_odometry():
 
 			# add mask to the base_image
 			base_image = base_image + mask
-
+	print("total frames: {}".format(count))
 	# TODO: Find actual rotation center on the base_image
 	coords = find_circle_center_manual(base_image)
-	coords2 = find_contour_center(base_image)
-	coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
+	#coords2 = find_contour_center(base_image)
+	#coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
 	print(coords)
-	print(coords2)
-	print(coords3)
+	#print(coords2)
+	#print(coords3)
 	# Draw the center of the wheel          
-	cv2.circle(base_image, (coords[0], coords[1]), 20, (100), -1)
-	cv2.circle(base_image, (coords2[0], coords2[1]), 15, (150), -1)
-	cv2.circle(base_image, (coords3[0], coords3[1]), 10, (200), -1)
+	cv2.circle(base_image, (coords[0], coords[1]), 12, (100), -1)
+	#cv2.circle(base_image, (coords2[0], coords2[1]), 8, (150), -1)
+	#cv2.circle(base_image, (coords3[0], coords3[1]), 6, (200), -1)
 	# Save image to file
 	cv2.imwrite("rotation_center.png", base_image)
 	# Show the image with marked rotation center

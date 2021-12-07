@@ -99,8 +99,8 @@ def visual_odometry():
 	width = 1920
 	height = 1080
 	# Open video file
-	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
-	cap = cv2.VideoCapture('crop_1.496rps.mp4')
+	cap = cv2.VideoCapture('crop_4.488rps.mp4')
+	#cap = cv2.VideoCapture('crop_1.496rps.mp4')
 
 	fps = cap.get(cv2.cv.CV_CAP_PROP_FPS)
 	print("Video FPS: {}".format(fps))
@@ -120,7 +120,7 @@ def visual_odometry():
 	marker_pos = []
 	end_not_reached = True
 	print('')
-	print("Running the video for the first time to find rotation center...")
+	print("Running the video once to find rotation center...")
 	while end_not_reached:
 	#for i in range(0, 100):
 		# Attempt to get the frame from the video
@@ -218,7 +218,7 @@ def visual_odometry():
 				# Limit possible angle increment to 2.0 radian, this will prevent
 				# huge leaps due to false marker detection
 				# TODO: find a better way to reliably filter false detection spikes
-				if abs(ang_dif) < 2:
+				if abs(ang_dif) < 1:
 					rotation_speed = abs(ang_dif) / (count_frames / fps)
 					#print("velocity: {}, {}".format(rotation_speed, count_frames))
 					velocity1.append(rotation_speed)
@@ -227,7 +227,7 @@ def visual_odometry():
 				ang_dif = angle2[-1] - angle2[-2]
 				if abs(ang_dif) > math.pi:
 					ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
-				if abs(ang_dif) < 2:
+				if abs(ang_dif) < 1:
 					rotation_speed = abs(ang_dif) / (count_frames / fps)
 					#print("velocity: {}".format(rotation_speed))
 					velocity2.append(rotation_speed)
@@ -236,7 +236,7 @@ def visual_odometry():
 				ang_dif = angle3[-1] - angle3[-2]
 				if abs(ang_dif) > math.pi:
 					ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
-				if abs(ang_dif) < 2:
+				if abs(ang_dif) < 1:
 					rotation_speed = abs(ang_dif) / (count_frames / fps)
 					#print("velocity: {}".format(rotation_speed))
 					velocity3.append(rotation_speed)

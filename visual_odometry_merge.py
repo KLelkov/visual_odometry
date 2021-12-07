@@ -112,12 +112,14 @@ def visual_odometry():
 	if ret:
 		# Correct image width and height for futher reference
 		height, width, channels = frame.shape
+		print("Actual video dimensions are {}, {}".format(width, height))
 
 
 	base_image = np.zeros((height,width), np.uint8)
 	# Run the whole video once to find the rotation center
 	count = 0
 	end_not_reached = True
+	print('')
 	print("Running the video for the first time to find rotation center...")
 	while end_not_reached:
 	#for i in range(0, 100):
@@ -145,43 +147,51 @@ def visual_odometry():
 
 	# Find actual rotation center on the base_image
 	coords = find_circle_center_manual(base_image)
-	#coords2 = find_contour_center(base_image)
-	#coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
-	print(coords)
-	#print(coords2)
-	#print(coords3)
-	# Draw the center of the wheel          
-	cv2.circle(base_image, (coords[0], coords[1]), 12, (100), -1)
-	#cv2.circle(base_image, (coords2[0], coords2[1]), 8, (150), -1)
-	#cv2.circle(base_image, (coords3[0], coords3[1]), 6, (200), -1)
+	coords2 = [0, 0]
+	coords3 = [0, 0]
+	if methods[0] == 1:
+		print("Manual cv2.HoughCircles solution for rotation center: {}, {}".format(coords[0], coords[1]))
+		cv2.circle(base_image, (coords[0], coords[1]), 12, (100), -1)
+	if methods[1] == 1:
+		coords2 = find_contour_center(base_image)
+		print("Manual cv2.findContours solution for rotation center: {}, {}".format(coords2[0], coords2[1]))
+		cv2.circle(base_image, (coords2[0], coords2[1]), 8, (150), -1)
+	if methods[2] == 1:
+		print("Running automatic cv2.HoughCircles solution. This will take a bunch of time!")
+		coords3 = find_circle_center_auto(base_image, 1, coords[2] - 50, coords[2] + 50)
+		print("Automatic cv2.HoughCircles solution for rotation center: {}, {}".format(coords3[0], coords3[1]))
+		cv2.circle(base_image, (coords3[0], coords3[1]), 6, (200), -1)
+
+
 	# Save image to file
 	cv2.imwrite("rotation_center.png", base_image)
 	# Show the image with marked rotation center
 	width = int(base_image.shape[1] * 50 / 100)
 	height = int(base_image.shape[0] * 50 / 100)
-	cv2.imshow("center", cv2.resize(base_image, (width, height), interpolation = cv2.INTER_AREA))
-	key_press = cv2.waitKey()
+	cv2.namedWindow("Rotation center")
+	cv2.moveWindow("Rotation center", 50, 50) 
+	cv2.imshow("Rotation center", cv2.resize(base_image, (width, height), interpolation = cv2.INTER_AREA))
+	cv2.waitKey(1000)
 
-
-	# TODO: Analyse the video frame by frame and calculate displacement
-	# of the marker relative to the rotatin center
 	cap.release()
+
+	# Analyse the video frame by frame and calculate displacement
+	# of the marker relative to the rotatin center
+	print('')
+	print("Calculating the rotation speed...")
 
 	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
 	cap = cv2.VideoCapture('crop_1.496rps.mp4')
-	#count = 0
-	end_not_reached = True
-	angle = []
-	velocity = []
-	#while end_not_reached:
-	#for i in range(0, 200):
+	angle1 = []
+	angle2 = []
+	angle3 = []
+	velocity1 = []
+	velocity2 = []
+	velocity3 = []
 	for i in tqdm(list(range(0, count))):
 		# Attempt to get the frame from the video
 		ret, frame = cap.read()
-		end_not_reached = ret
-		#count += 1
-		#if count % 25 == 0:
-		#	print(count)
+
 		if ret:
 			# Normalize image brightness
 			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
@@ -202,24 +212,61 @@ def visual_odometry():
 				#cv2.imshow("center", cv2.resize(mask, (width, height), interpolation = cv2.INTER_AREA))
 				#key_press = cv2.waitKey()
 
-				# TODO: Calculate the rotation speed of the wheel
-				angle.append(math.atan2(y - coords[1], x - coords[0]))
-				#print(angle)
-				if len(angle) > 1:
-					ang_dif = angle[-1] - angle[-2]
+				# Calculate the rotation speed of the wheel
+				if methods[0] == 1:
+					angle1.append(math.atan2(y - coords[1], x - coords[0]))
+				if methods[1] == 1:
+					angle2.append(math.atan2(y - coords2[1], x - coords2[0]))
+				if methods[2] == 1:
+					angle3.append(math.atan2(y - coords3[1], x - coords3[0]))
+
+
+
+				if len(angle1) > 2:
+					ang_dif = angle1[-1] - angle1[-2]
 					if abs(ang_dif) > math.pi:
 						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
 					# Limit possible angle increment to one radian, this will prevent
 					# huge leaps due to false marker detection
-					# TODO: find a better way to reliably detect marker
-					if abs(ang_dif) < 1:# and abs(ang_dif) > 0.01:
+					# TODO: find a better way to reliably filter false detection spikes
+					if abs(ang_dif) < 1:
 						rotation_speed = abs(ang_dif) * fps
 						#print("velocity: {}".format(rotation_speed))
-						velocity.append(rotation_speed)
+						velocity1.append(rotation_speed)
+
+				if len(angle2) > 2:
+					ang_dif = angle2[-1] - angle2[-2]
+					if abs(ang_dif) > math.pi:
+						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+					# Limit possible angle increment to one radian, this will prevent
+					# huge leaps due to false marker detection
+					# TODO: find a better way to reliably filter false detection spikes
+					if abs(ang_dif) < 1:
+						rotation_speed = abs(ang_dif) * fps
+						#print("velocity: {}".format(rotation_speed))
+						velocity2.append(rotation_speed)
+
+				if len(angle3) > 2:
+					ang_dif = angle3[-1] - angle3[-2]
+					if abs(ang_dif) > math.pi:
+						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+					# Limit possible angle increment to one radian, this will prevent
+					# huge leaps due to false marker detection
+					# TODO: find a better way to reliably filter false detection spikes
+					if abs(ang_dif) < 1:
+						rotation_speed = abs(ang_dif) * fps
+						#print("velocity: {}".format(rotation_speed))
+						velocity3.append(rotation_speed)
+				
+
+	if methods[0] == 1:
+		print("Method 1 solution for rotation speed: {:02.2f}".format(sum(velocity1) / len(velocity1)))
+	if methods[1] == 1:
+		print("Method 2 solution for rotation speed: {:02.2f}".format(sum(velocity2) / len(velocity2)))
+	if methods[2] == 1:
+		print("Method 3 solution for rotation speed: {:02.2f}".format(sum(velocity3) / len(velocity3)))
 
 
-
-	print("Mean value: {}".format(sum(velocity) / len(velocity)))
 	# Close the video
 	cap.release()
 

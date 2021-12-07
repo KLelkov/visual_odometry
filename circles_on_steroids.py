@@ -84,7 +84,7 @@ def find_circle_center_auto(image, number_of_circles_expected, minimum_circle_si
 
 	#Return the circleLog with the highest accumulator threshold
 	mean_center = [0, 0]
-	print("Best approximations for the circle found automaticly:")
+	#print("Best approximations for the circle found automaticly:")
 	# ensure at least some circles were found
 	for i in range(0, len(circleLog)):
 	#for cir in circleLog:
@@ -93,10 +93,10 @@ def find_circle_center_auto(image, number_of_circles_expected, minimum_circle_si
 		output = np.copy(orig_image)
 
 		if (len(cir) > 1):
-			print("FAIL before")
+			print("FAIL before approximation could be found!")
 			exit()
 
-		print(cir[0, :])
+		#print(cir[0, :])
 		mean_center[0] += cir[0][0][0]
 		mean_center[1] += cir[0][0][1]
 
@@ -105,7 +105,7 @@ def find_circle_center_auto(image, number_of_circles_expected, minimum_circle_si
 		for (x, y, r) in cir:
 			cv2.circle(output, (x, y), r, (200), 2)
 			cv2.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
-		print(params[i])
+		#print(params[i])
 		#cv2.imshow("output", output)
 		#cv2.waitKey()
 	mean_center[0] = mean_center[0] / len(circleLog)

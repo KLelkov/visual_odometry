@@ -118,6 +118,7 @@ def visual_odometry():
 	base_image = np.zeros((height,width), np.uint8)
 	# Run the whole video once to find the rotation center
 	count = 0
+	marker_pos = []
 	end_not_reached = True
 	print('')
 	print("Running the video for the first time to find rotation center...")
@@ -141,6 +142,16 @@ def visual_odometry():
 
 			# add mask to the base_image
 			base_image = base_image + mask
+
+			# --- marker position calculation
+			moments = cv2.moments(mask, 1)
+			x = -1
+			y = -1
+			if moments['m00'] != 0:
+				x = int(moments['m10']/moments['m00'])
+				y = int(moments['m01']/moments['m00'])
+			marker_pos.append((x, y))
+			#print(marker_pos[-1])
 		if count % 50 == 0:
 			print("Frames analysed: {} ...".format(count))
 	print("Total frames in the video: {}".format(count))
@@ -171,7 +182,7 @@ def visual_odometry():
 	cv2.namedWindow("Rotation center")
 	cv2.moveWindow("Rotation center", 50, 50) 
 	cv2.imshow("Rotation center", cv2.resize(base_image, (width, height), interpolation = cv2.INTER_AREA))
-	cv2.waitKey(1000)
+	cv2.waitKey(3000)
 
 	cap.release()
 
@@ -181,83 +192,65 @@ def visual_odometry():
 	print("Calculating the rotation speed...")
 
 	#cap = cv2.VideoCapture('crop_4.488rps.mp4')
-	cap = cv2.VideoCapture('crop_1.496rps.mp4')
+	#cap = cv2.VideoCapture('crop_1.496rps.mp4')
 	angle1 = []
 	angle2 = []
 	angle3 = []
 	velocity1 = []
 	velocity2 = []
 	velocity3 = []
-	for i in tqdm(list(range(0, count))):
-		# Attempt to get the frame from the video
-		ret, frame = cap.read()
-
-		if ret:
-			# Normalize image brightness
-			cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
-			# Blur the image to reduce noise
-			blur = cv2.medianBlur(frame, 15)
-			# Convert BGR to HSV
-			# HSV images are easier to work with
-			hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-			# Get the mask
-			mask = color_detection_hsv(hsv)
-			moments = cv2.moments(mask, 1)
-			x = 0
-			y = 0
-			if moments['m00'] != 0:
-				x = int(moments['m10']/moments['m00'])
-				y = int(moments['m01']/moments['m00'])
-				#cv2.circle(mask, (x, y), 8, (150), -1)
-				#cv2.imshow("center", cv2.resize(mask, (width, height), interpolation = cv2.INTER_AREA))
-				#key_press = cv2.waitKey()
-
-				# Calculate the rotation speed of the wheel
-				if methods[0] == 1:
-					angle1.append(math.atan2(y - coords[1], x - coords[0]))
-				if methods[1] == 1:
-					angle2.append(math.atan2(y - coords2[1], x - coords2[0]))
-				if methods[2] == 1:
-					angle3.append(math.atan2(y - coords3[1], x - coords3[0]))
+	count_frames = 1
+	for i in tqdm(list(range(0, len(marker_pos)))):
+		x, y = marker_pos[i]
+		if x < 0 or y < 0:
+			count_frames = 1
+		else:
+			# Calculate the rotation speed of the wheel
+			if methods[0] == 1:
+				angle1.append(math.atan2(y - coords[1], x - coords[0]))
+			if methods[1] == 1:
+				angle2.append(math.atan2(y - coords2[1], x - coords2[0]))
+			if methods[2] == 1:
+				angle3.append(math.atan2(y - coords3[1], x - coords3[0]))
 
 
+			if len(angle1) > 2:
+				ang_dif = angle1[-1] - angle1[-2]
+				if abs(ang_dif) > math.pi:
+					ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+				# Limit possible angle increment to one radian, this will prevent
+				# huge leaps due to false marker detection
+				# TODO: find a better way to reliably filter false detection spikes
+				if abs(ang_dif) < 2:
+					rotation_speed = abs(ang_dif) / (count_frames / fps)
+					#print("velocity: {}, {}".format(rotation_speed, count_frames))
+					velocity1.append(rotation_speed)
 
-				if len(angle1) > 2:
-					ang_dif = angle1[-1] - angle1[-2]
-					if abs(ang_dif) > math.pi:
-						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
-					# Limit possible angle increment to one radian, this will prevent
-					# huge leaps due to false marker detection
-					# TODO: find a better way to reliably filter false detection spikes
-					if abs(ang_dif) < 1:
-						rotation_speed = abs(ang_dif) * fps
-						#print("velocity: {}".format(rotation_speed))
-						velocity1.append(rotation_speed)
+			if len(angle2) > 2:
+				ang_dif = angle2[-1] - angle2[-2]
+				if abs(ang_dif) > math.pi:
+					ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+				# Limit possible angle increment to one radian, this will prevent
+				# huge leaps due to false marker detection
+				# TODO: find a better way to reliably filter false detection spikes
+				if abs(ang_dif) < 2:
+					rotation_speed = abs(ang_dif) / (count_frames / fps)
+					#print("velocity: {}".format(rotation_speed))
+					velocity2.append(rotation_speed)
 
-				if len(angle2) > 2:
-					ang_dif = angle2[-1] - angle2[-2]
-					if abs(ang_dif) > math.pi:
-						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
-					# Limit possible angle increment to one radian, this will prevent
-					# huge leaps due to false marker detection
-					# TODO: find a better way to reliably filter false detection spikes
-					if abs(ang_dif) < 1:
-						rotation_speed = abs(ang_dif) * fps
-						#print("velocity: {}".format(rotation_speed))
-						velocity2.append(rotation_speed)
-
-				if len(angle3) > 2:
-					ang_dif = angle3[-1] - angle3[-2]
-					if abs(ang_dif) > math.pi:
-						ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
-					# Limit possible angle increment to one radian, this will prevent
-					# huge leaps due to false marker detection
-					# TODO: find a better way to reliably filter false detection spikes
-					if abs(ang_dif) < 1:
-						rotation_speed = abs(ang_dif) * fps
-						#print("velocity: {}".format(rotation_speed))
-						velocity3.append(rotation_speed)
+			if len(angle3) > 2:
+				ang_dif = angle3[-1] - angle3[-2]
+				if abs(ang_dif) > math.pi:
+					ang_dif = ang_dif - math.copysign(2 * math.pi, ang_dif)
+				# Limit possible angle increment to one radian, this will prevent
+				# huge leaps due to false marker detection
+				# TODO: find a better way to reliably filter false detection spikes
+				if abs(ang_dif) < 2:
+					rotation_speed = abs(ang_dif) / (count_frames / fps)
+					#print("velocity: {}".format(rotation_speed))
+					velocity3.append(rotation_speed)
 				
+			count_frames = 1
 
 	if methods[0] == 1:
 		print("Method 1 solution for rotation speed: {:02.2f}".format(sum(velocity1) / len(velocity1)))

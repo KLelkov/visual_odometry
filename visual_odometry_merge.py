@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import sys
 import cv2 # used for image proccessing
 import numpy as np # used for linear algebra math
 import math # used for trigonometry functions
@@ -71,6 +72,31 @@ def find_contour_center(image):
 
 
 def visual_odometry():
+
+	args = [int(i) for i in sys.argv[1:]]
+	methods = args
+	print('')
+	print("Script launched with {} arguments.".format(len(args)))
+	if len(args) == 0:
+		print("The default mode will be used with manual cv2.HoughCircles")
+		print("approximation for rotation center.")
+		print("You can add or remove additional approximations by adding")
+		print("argumets to the script call. Example:")
+		print("> python visual_odometry_merge.py 1 0 1")
+		print("This tells the script:")
+		print("- to USE manual cv2.HoughCircles")
+		print("- to NOT USE manual cv2.findContours")
+		print("- to USE autmatic cv2.HoughCircles")
+		print("Solution for each choosen approximation will be built separetly.")
+		methods = [1, 0, 0]
+	elif len(args) == 1:
+		methods = [args[0], 0, 0]
+	elif len(args) == 2:
+		methods = [args[0], args[1], 0]
+	elif len(args) > 3:
+		print("Too many argumets. Extra arguments will be ignored.")
+	print('')
+
 	width = 1920
 	height = 1080
 	# Open video file
@@ -196,8 +222,6 @@ def visual_odometry():
 	print("Mean value: {}".format(sum(velocity) / len(velocity)))
 	# Close the video
 	cap.release()
-
-
 
 
 

@@ -18,3 +18,6 @@ To select the approximation method run the command
 python visual_odometry.py 1 1 1
 ```
 1's specify which methods should be enabled. To disable the method - place 0 instead.
+
+P.S.
+You can find a few test videos in the repo that were used in development. Each video contains a real rotation speed tag in its name (measured by faulhaber speed controller) 1.496 rps = 1.496 radians per second.
